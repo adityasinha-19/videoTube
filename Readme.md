@@ -1,0 +1,1 @@
+This is the backend project for a video publishing site. The application is built using Express and Node.js, leverages MongoDB for data storage, utilizes Cloudinary for handling file uploads and storage, and uses JWT (JSON Web Tokens) for secure authentication and access token generation.
