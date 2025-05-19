@@ -75,6 +75,9 @@ const registerUser = asyncHandler(async (req, res) => {
   if (!avatar) {
     throw new ApiError(500, "avatar not uploaded");
   }
+  if (!coverImage) {
+    throw new ApiError(500, "cover image not uploaded");
+  }
 
   const user = await User.create({
     fullName,
