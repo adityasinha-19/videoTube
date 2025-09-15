@@ -16,33 +16,31 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
   const video = await Video.findById(videoId);
 
-  if (req.user._id !== video.owner) {
-    throw new ApiError(401, "unauthorized request");
+  if (!video) {
+    throw new ApiError(400, "Invalid videp id");
   }
 
-  const videoComments = await Video.aggregate([
+  const pipeline = [
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(video._id),
+        video: new mongoose.Types.ObjectId(video._id),
       },
     },
-    {
-      $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "video",
-        as: "videoComments",
-      },
-    },
-    {
-      $addFields: {
-        $first: "$videoComments",
-      },
-    },
-  ]);
+  ];
 
-  if (!videoComments) {
-    throw new ApiError(500, "error while fetching comments");
+  const options = {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    customLabels: { docs: "comments" },
+  };
+
+  const videoComments = await Comment.aggregatePaginate(
+    Comment.aggregate(pipeline),
+    options
+  );
+
+  if (!videoComments || videoComments.comments.length === 0) {
+    throw new ApiError(404, "error while fetching comments");
   }
 
   return res
