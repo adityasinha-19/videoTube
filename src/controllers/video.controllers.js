@@ -10,8 +10,74 @@ import {
 } from "../utils/cloudinary.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    query,
+    sortBy = "createdAt",
+    sortType = "desc",
+    userId,
+  } = req.query;
   //TODO: get all videos based on query, sort, pagination
+
+  // build match stage
+  let match = {};
+
+  // single field search
+  /*
+  if (query) {
+    match.title = {
+      $regex: query,
+      $options: "i",
+    };
+  }
+    */
+
+  // multi-field search: title & description
+  if (query) {
+    const regexQuery = { $regex: query, $options: "i" };
+    match.$or = [{ title: regexQuery }, { description: regexQuery }];
+  }
+
+  // if a valid userId is provided then filter only videos uploaded by that user
+  if (userId && isValidObjectId(userId)) {
+    match.owner = userId;
+  }
+
+  // convert sorting order
+  const sortOrder = sortType === "asc" ? 1 : -1;
+
+  // build MOngoDB aggregation pipeline
+  // stage 1: $match -> filters videos based on search(query)/userId conditions
+  // stage 2: $sort -> sorts the matched videos by the given field and order
+  const pipeline = [{ $match: match }, { $sort: { [sortBy]: sortOrder } }];
+
+  // Pagination options for aggregatePaginate plugin
+  // convert page and limit string to Number
+  // page -> current page number
+  // limit -> number of documents per page
+  // customLabels -> rename "docs" field to "videos" in response
+  const options = {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    customLabels: { docs: "videos" },
+  };
+
+  // execute the aggregation pipeline with pagination
+  // Video.aggregate(pipeline) -> runs the pipeline
+  // aggregatePaginate => automatically handles pagination for aggregation results
+  const videos = await Video.aggregatePaginate(
+    Video.aggregate(pipeline),
+    options
+  );
+
+  if (!videos || videos.videos.length === 0) {
+    throw new ApiError(404, "No videos found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, videos, "videos fetched successfully"));
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
