@@ -65,12 +65,11 @@ const addComment = asyncHandler(async (req, res) => {
   }
 
   const video = await Video.findById(videoId);
-
-  if (req.user._id !== video.owner) {
-    throw new ApiError(401, "Unauthorized request");
+  if (!video) {
+    throw new ApiError(404, "Video not found");
   }
 
-  if (content.trim() === "") {
+  if (content?.trim() === "") {
     throw new ApiError(400, "content field is required");
   }
 
@@ -80,20 +79,14 @@ const addComment = asyncHandler(async (req, res) => {
     video: video._id,
   });
 
-  const createdComment = await Comment.findById(comment._id);
-
-  if (!createdComment) {
+  if (!comment) {
     throw new ApiError(500, "something went wrong while commenting");
   }
 
   return res
     .status(200)
     .json(
-      new ApiResponse(
-        200,
-        createdComment,
-        "comment has been succesfully created"
-      )
+      new ApiResponse(200, comment, "comment has been succesfully created")
     );
 });
 
@@ -107,16 +100,28 @@ const updateComment = asyncHandler(async (req, res) => {
   }
 
   const comment = await Comment.findById(commentId);
+  if (!comment) {
+    throw new ApiError(404, "comment not found");
+  }
 
-  if (req.user._id !== comment.owner) {
+  // (!comment.owner.equals(req.user._id))  built in mongoose method to check id since objectId in mongoose is Object.
+  if (req.user._id.toString() !== comment.owner.toString()) {
     throw new ApiError(401, "unauthorized request");
   }
 
-  const updatedComment = await Comment.findByIdAndUpdate(comment._id, {
-    $set: {
-      content,
+  if (content?.trim() === "") {
+    throw new ApiError(400, "content field is missing");
+  }
+
+  const updatedComment = await Comment.findByIdAndUpdate(
+    comment._id,
+    {
+      $set: {
+        content: content.trim(),
+      },
     },
-  });
+    { new: true }
+  );
 
   if (!updatedComment) {
     throw new ApiError(500, "something went wrong while updating comment");
@@ -136,12 +141,18 @@ const deleteComment = asyncHandler(async (req, res) => {
   }
 
   const comment = await Comment.findById(commentId);
+  if (!comment) {
+    throw new ApiError(404, "comment not found");
+  }
 
-  if (req.user._id !== comment.owner) {
+  if (!comment.owner.equals(req.user._id)) {
     throw new ApiError(401, "unauthorized request");
   }
 
-  await Comment.findByIdAndDelete(comment._id);
+  const deletedComment = await Comment.findByIdAndDelete(commentId);
+  if (!deletedComment) {
+    throw new ApiError(500, "Error deleting the comment");
+  }
 
   return res.status(200).json(new ApiResponse(200, "comment has been deleted"));
 });
