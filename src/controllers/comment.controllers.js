@@ -154,7 +154,9 @@ const deleteComment = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Error deleting the comment");
   }
 
-  return res.status(200).json(new ApiResponse(200, "comment has been deleted"));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "comment has been deleted"));
 });
 
 export { getVideoComments, addComment, updateComment, deleteComment };

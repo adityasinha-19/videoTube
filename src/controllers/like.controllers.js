@@ -12,140 +12,197 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: toggle like on video
 
-  if (!isValidObjectId(videoId.trim())) {
+  if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "Invalid video Id");
   }
 
   const video = await Video.findById(videoId);
-
-  if (video.owner !== req.user._id) {
-    throw new ApiError(401, "Unauthorized request");
+  if (!video) {
+    throw new ApiError(404, "Video not found");
   }
 
+  // check if like already exists in video -> if yes then delete it i.e., unlike
+  const deleteLike = await Like.findOneAndDelete({
+    likedBy: req.user._id,
+    video: videoId,
+  });
+  if (deleteLike) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Video Like removed successfully"));
+  }
+
+  // create new like
   const like = await Like.create({
     likedBy: req.user._id,
+    video: videoId,
   });
 
   if (!like) {
-    throw new ApiError(400, "Error while updating user like");
-  }
-
-  const videoLike = await Like.findByIdAndUpdate(
-    like._id,
-    {
-      $set: {
-        video: video._id,
-      },
-    },
-    {
-      new: true,
-    }
-  );
-
-  if (!videoLike) {
-    throw new ApiError(500, "Error while liking the video");
+    throw new ApiError(500, "Something went wrong while updating user like");
   }
 
   return res
     .status(200)
-    .json(new ApiResponse(200, videoLike, "video has been liked successfully"));
+    .json(new ApiResponse(200, like, "video has been liked successfully"));
 });
+
+/*
+const toggleVideoLike = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video id");
+  }
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  // check for existing like
+  const existingLike = await Like.findOne({
+    video: videoId,
+    likedBy: req.user._id,
+  });
+
+  // delete the existing like
+  if (existingLike) {
+    const deleteLike = await Like.findByIdAndDelete(existingLike._id);
+    if (!deleteLike) {
+      throw new ApiError(500, "Something went wrong while unliking the video");
+    }
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Unliked the video succesfully"));
+  }
+
+  // create new like
+  const newLike = await Like.create({
+    video: videoId,
+    likedBy: req.user._id,
+  });
+  if (!newLike) {
+    throw new ApiError(500, "Something went wrong while liking the video");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, newLike, "Liked the video succesfully"));
+});
+*/
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   //TODO: toggle like on comment
 
-  if (!isValidObjectId(commentId.trim())) {
-    throw new ApiError(400, "Invalid comment id");
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid comment Id");
   }
 
+  // check if comment exists
   const comment = await Comment.findById(commentId);
-
-  if (comment.owner !== req.user._id) {
-    throw new ApiError(401, "Unauthorized request");
+  if (!comment) {
+    throw new ApiError(404, "Comment not found");
   }
 
-  const like = await Like.find({ likedBy: req.user._id });
+  // check if comment is already liked -> if yes then delete, else create new one
 
-  const commentLike = await Like.findByIdAndUpdate(
-    like._id,
-    {
-      $set: {
-        comment: comment._id,
-      },
-    },
-    {
-      new: true,
-    }
-  );
+  const deletedLike = await Like.findOneAndDelete({
+    likedBy: req.user._id,
+    comment: commentId,
+  });
+  if (deletedLike) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Comment Like removed successully"));
+  }
 
-  if (!commentLike) {
-    throw new ApiError(400, "Error while liking the comment");
+  const newLike = await Like.create({
+    likedBy: req.user._id,
+    comment: commentId,
+  });
+  if (!newLike) {
+    throw new ApiError(500, "Something went wrong while liking the comment");
   }
 
   return res
     .status(200)
-    .json(
-      new ApiResponse(200, commentLike, "Comment has been liked succesfully")
-    );
+    .json(new ApiResponse(200, newLike, "Comment liked successfully"));
 });
 
 const toggleTweetLike = asyncHandler(async (req, res) => {
   const { tweetId } = req.params;
   //TODO: toggle like on tweet
-  if (!isValidObjectId(tweetId.trim())) {
-    throw new ApiError(400, "invalid tweet id");
+  if (!isValidObjectId(tweetId.trim)) {
+    throw new ApiError(400, "Invalid tweet id");
   }
 
+  // check if tweet exists
   const tweet = await Tweet.findById(tweetId);
-
-  if (tweet.owner !== req.user._id) {
-    throw new ApiError(401, "Unautorized request");
+  if (!tweet) {
+    throw new ApiError(200, "Tweet not found");
   }
 
-  const like = await Like.find({ likedBy: req.user._id });
+  // check if tweet is already liked -> if yes then remove the like
+  const deleteLike = await Like.findOneAndDelete({
+    tweet: tweetId,
+    likedBy: req.user._id,
+  });
+  if (deleteLike) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Tweet like removed successfully"));
+  }
 
-  const tweetLike = await Like.findByIdAndUpdate(
-    like._id,
-    {
-      $set: {
-        tweet: tweet._id,
-      },
-    },
-    {
-      new: true,
-    }
-  );
-
-  if (!tweetLike) {
-    throw new ApiError(500, "Error while liking the tweet");
+  const like = await Like.create({
+    tweet: tweetId,
+    likedBy: req.user._id,
+  });
+  if (!like) {
+    throw new ApiError(500, "Something went wrong while liking the tweet");
   }
 
   return res
     .status(200)
-    .json(new ApiResponse(200, tweetLike, "Tweet has been liked succesfully"));
+    .json(new ApiResponse(200, like, "Tweet has been liked succesfully"));
 });
 
 const getLikedVideos = asyncHandler(async (req, res) => {
   //TODO: get all liked videos
 
-  const likedVideos = await User.aggregate([
+  const likedVideos = await Like.aggregate([
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(req.user._id),
+        likedBy: new mongoose.Types.ObjectId(req.user._id),
       },
     },
     {
+      $sort: { createdAt: -1 },
+    },
+    {
       $lookup: {
-        from: "likes",
-        localField: "_id",
-        foreignField: "video",
-        as: "likedVideos",
+        from: "videos",
+        foreignField: "_id",
+        localField: "video",
+        as: "videoDetails",
+      },
+    },
+    {
+      $unwind: {
+        path: "$videoDetails",
+        preserveNullAndEmptyArrays: false,
       },
     },
     {
       $addFields: {
-        $first: "$likedVideos",
+        "videoDetails.likedAt": "$createdAt",
+        "videoDetails.likeId": "$_id",
+      },
+    },
+    {
+      $replaceRoot: {
+        newRoot: "$videoDetails",
       },
     },
   ]);
