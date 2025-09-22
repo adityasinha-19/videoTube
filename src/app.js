@@ -28,7 +28,7 @@ import playlistRouter from "./routes/playlist.routes.js";
 import dashboardRouter from "./routes/dashboard.routes.js";
 
 // route declaration
-app.use("/api/v1/healthcheck", healthcheckRouter);
+app.use("/api/v2/healthcheck", healthcheckRouter);
 app.use("/api/v2/users", userRouter);
 app.use("/api/v2/tweets", tweetRouter);
 app.use("/api/v2/subscriptions", subscriptionRouter);
